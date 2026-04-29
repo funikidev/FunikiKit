@@ -160,19 +160,17 @@ public struct FunikiShareSheet: View {
                     .padding(.vertical, 4)
                 }
 
-                // Export actions
+                // Export
                 Section("Export") {
-                    // Native file share
                     if let url = try? FunikiExporter.temporaryFileURL(pack) {
                         ShareLink(
                             item: url,
                             preview: SharePreview("\(pack.name).funiki", icon: Image(systemName: "doc"))
                         ) {
-                            Label("Share .funiki file", systemImage: "square.and.arrow.up")
+                            Label("Share .funiki", systemImage: "square.and.arrow.up")
                         }
                     }
 
-                    // Copy JSON
                     Button {
                         if let json = try? FunikiExporter.jsonString(pack) {
                             UIPasteboard.general.string = json
@@ -182,7 +180,6 @@ public struct FunikiShareSheet: View {
                         Label(showCopied ? "Copied!" : "Copy JSON", systemImage: showCopied ? "checkmark" : "doc.on.doc")
                     }
 
-                    // Copy share URL
                     if let url = FunikiExporter.shareURL(pack) {
                         ShareLink(item: url) {
                             Label("Share Link", systemImage: "link")

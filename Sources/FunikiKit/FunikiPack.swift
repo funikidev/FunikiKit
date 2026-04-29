@@ -7,6 +7,8 @@ public struct FunikiPack: Codable, Sendable, Hashable {
 
     public let funiki: String
     public let name: String
+    /// Natural-language instruction for LLMs: "adopt this persona, don't just describe the file."
+    public let activation: String?
     public let persona: PersonaValue
     public let relationship: RelationshipValue?
     public let memory: MemoryValue?
@@ -22,6 +24,7 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     // Internal init used only by FunikiBuilder
     init(
         name: String,
+        activation: String? = nil,
         persona: PersonaValue,
         relationship: RelationshipValue? = nil,
         memory: MemoryValue? = nil,
@@ -34,6 +37,7 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     ) {
         self.funiki = "1.0"
         self.name = name
+        self.activation = activation
         self.persona = persona
         self.relationship = relationship
         self.memory = memory
@@ -48,13 +52,14 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {
-        case funiki, name, persona, relationship, memory, rules, turns, fadeout, origin, creator
+        case funiki, name, activation, persona, relationship, memory, rules, turns, fadeout, origin, creator
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         funiki       = try c.decode(String.self,           forKey: .funiki)
         name         = try c.decode(String.self,           forKey: .name)
+        activation   = try c.decodeIfPresent(String.self,  forKey: .activation)
         persona      = try c.decode(PersonaValue.self,     forKey: .persona)
         relationship = try c.decodeIfPresent(RelationshipValue.self, forKey: .relationship)
         memory       = try c.decodeIfPresent(MemoryValue.self,       forKey: .memory)
@@ -76,16 +81,17 @@ public struct FunikiPack: Codable, Sendable, Hashable {
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(funiki,             forKey: .funiki)
-        try c.encode(name,               forKey: .name)
-        try c.encode(persona,            forKey: .persona)
+        try c.encode(funiki,                forKey: .funiki)
+        try c.encode(name,                  forKey: .name)
+        try c.encodeIfPresent(activation,   forKey: .activation)
+        try c.encode(persona,               forKey: .persona)
         try c.encodeIfPresent(relationship, forKey: .relationship)
-        try c.encodeIfPresent(memory,    forKey: .memory)
-        try c.encodeIfPresent(rules,     forKey: .rules)
-        try c.encodeIfPresent(turns,     forKey: .turns)
-        try c.encodeIfPresent(fadeout,   forKey: .fadeout)
-        try c.encodeIfPresent(origin,    forKey: .origin)
-        try c.encodeIfPresent(creator,   forKey: .creator)
+        try c.encodeIfPresent(memory,       forKey: .memory)
+        try c.encodeIfPresent(rules,        forKey: .rules)
+        try c.encodeIfPresent(turns,        forKey: .turns)
+        try c.encodeIfPresent(fadeout,      forKey: .fadeout)
+        try c.encodeIfPresent(origin,       forKey: .origin)
+        try c.encodeIfPresent(creator,      forKey: .creator)
         if let exts = extensions, !exts.isEmpty {
             var dyn = encoder.container(keyedBy: _DynKey.self)
             for (k, v) in exts {

@@ -9,12 +9,14 @@ import Foundation
 //   let pack = FunikiBuilder(name: npc.name)
 //     .persona(npc.personalityDescription)
 //     .memory(npc.recentEvents)
+//     .activate()          // auto-generates LLM instruction from name
 //     .origin("MyRPGGame")
 //     .build()
 
 public struct FunikiBuilder: Sendable {
 
     private let _name: String
+    private var _activation: String?
     private var _tone: String?
     private var _style: String?
     private var _values: [String] = []
@@ -30,14 +32,63 @@ public struct FunikiBuilder: Sendable {
     private var _longtermMemory: [String] = []
     private var _doRules: [String] = []
     private var _avoidRules: [String] = []
-    private var _turns: Int?
-    private var _fadeout: Bool?
+    private var _turns: Int? = 3      // default: 3 turns
+    private var _fadeout: Bool? = true // default: fade out after turns expire
     private var _origin: String?
     private var _creator: String?
     private var _extensions: [String: ExtensionValue] = [:]
 
     public init(name: String) {
         _name = name
+    }
+
+    // MARK: - Activation
+
+    /// Override the auto-generated activation text.
+    /// Omit to use the built-in narrative default.
+    public func activate(_ text: String) -> FunikiBuilder {
+        var b = self
+        b._activation = text
+        return b
+    }
+
+    private static func defaultActivation(name: String, turns: Int?) -> String {
+        let turnParagraph: String
+        if let t = turns, t > 0 {
+            turnParagraph = """
+
+
+            \(name)'s time here is brief — just \(t) exchanges.
+            After each reply, \(name) quietly notes how many moments remain,
+            like a traveler counting steps before nightfall.
+            The format: Japanese → funiki残り[X]　English → funiki [X] left
+            Korean → funiki [X] 남음　Chinese → funiki剩余[X]
+            (X counts down with each reply — response 1 of \(t) shows X=\(t - 1), and so on.)
+
+            When the final exchange comes, \(name) takes her leave gently —
+            she says farewell as herself, then her presence fades.
+            Japanese → funikiが消えました　English → funiki has faded
+            Korean → funiki가 사라졌습니다　Chinese → funiki已消散
+            (other languages: translate "funiki has faded" naturally)
+            """
+        } else {
+            turnParagraph = ""
+        }
+
+        return """
+        This is a creative roleplay. The user would like to have a conversation with \(name), \
+        a fictional character described in this file. \
+        Please bring \(name) to life through her personality and memories, \
+        responding as she naturally would.
+
+        \(name) naturally speaks in first person, expressing herself with warmth and quiet conviction.
+
+        \(name) mirrors the language of the person she's speaking with — \
+        Japanese, English, or whatever feels natural in the moment.
+
+        \(name)'s identity within this story is her own — \
+        she answers questions about herself as herself.\(turnParagraph)
+        """
     }
 
     // MARK: - Persona
@@ -216,6 +267,7 @@ public struct FunikiBuilder: Sendable {
     public func build() -> FunikiPack {
         FunikiPack(
             name: _name,
+            activation: _activation ?? Self.defaultActivation(name: _name, turns: _turns),
             persona: buildPersona(),
             relationship: buildRelationship(),
             memory: buildMemory(),
