@@ -136,8 +136,6 @@ public struct FunikiShareSheet: View {
 
     let pack: FunikiPack
     @Environment(\.dismiss) private var dismiss
-    @State private var jsonText: String = ""
-    @State private var showCopied = false
     @State private var qrImage: Image?
 
     public var body: some View {
@@ -165,19 +163,10 @@ public struct FunikiShareSheet: View {
                     if let url = try? FunikiExporter.temporaryFileURL(pack) {
                         ShareLink(
                             item: url,
-                            preview: SharePreview("\(pack.name).funiki", icon: Image(systemName: "doc"))
+                            preview: SharePreview("\(pack.name).funiki.json", icon: Image(systemName: "doc"))
                         ) {
-                            Label("Share .funiki", systemImage: "square.and.arrow.up")
+                            Label("Share .funiki.json", systemImage: "square.and.arrow.up")
                         }
-                    }
-
-                    Button {
-                        if let json = try? FunikiExporter.jsonString(pack) {
-                            UIPasteboard.general.string = json
-                            showCopied = true
-                        }
-                    } label: {
-                        Label(showCopied ? "Copied!" : "Copy JSON", systemImage: showCopied ? "checkmark" : "doc.on.doc")
                     }
 
                     if let url = FunikiExporter.shareURL(pack) {
@@ -204,16 +193,6 @@ public struct FunikiShareSheet: View {
                             .padding(.vertical, 8)
                     }
                 }
-
-                // JSON preview
-                Section("JSON Preview") {
-                    ScrollView {
-                        Text(jsonText)
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(maxHeight: 180)
-                }
             }
             .navigationTitle("Export Pack")
             .navigationBarTitleDisplayMode(.inline)
@@ -221,9 +200,6 @@ public struct FunikiShareSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
-            }
-            .onAppear {
-                jsonText = (try? FunikiExporter.jsonString(pack)) ?? ""
             }
         }
     }

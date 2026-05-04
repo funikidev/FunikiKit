@@ -62,7 +62,7 @@ public enum FunikiExporter {
 
     /// Encode the pack as a base64 share URL pointing to the funiki web generator.
     /// Recipients can open this URL to view and use the pack without any app.
-    public static func shareURL(_ pack: FunikiPack, base: String = "https://funikidev.github.io/generator.html") -> URL? {
+    public static func shareURL(_ pack: FunikiPack, base: String = "https://funikidev.github.io/pack.html") -> URL? {
         guard let data = try? jsonData(pack) else { return nil }
         let b64 = data.base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")
