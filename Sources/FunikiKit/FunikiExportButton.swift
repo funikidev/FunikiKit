@@ -137,6 +137,7 @@ public struct FunikiShareSheet: View {
     let pack: FunikiPack
     @Environment(\.dismiss) private var dismiss
     @State private var qrImage: Image?
+    @State private var qrFailed: Bool = false
 
     public var body: some View {
         NavigationStack {
@@ -179,8 +180,12 @@ public struct FunikiShareSheet: View {
                 // QR
                 Section("QR Code") {
                     Button("Generate QR") {
+                        qrFailed = false
                         if let img = FunikiExporter.qrImage(pack) {
                             qrImage = Image(uiImage: img)
+                        } else {
+                            qrImage = nil
+                            qrFailed = true
                         }
                     }
                     if let qr = qrImage {
@@ -191,6 +196,11 @@ public struct FunikiShareSheet: View {
                             .frame(height: 200)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
+                    } else if qrFailed {
+                        Text("Pack is too large to fit in a QR code. Use Share Link instead.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.vertical, 4)
                     }
                 }
             }

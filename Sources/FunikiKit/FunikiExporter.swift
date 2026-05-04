@@ -83,7 +83,7 @@ public enum FunikiExporter {
 
         let filter = CIFilter.qrCodeGenerator()
         filter.message = inputData
-        filter.correctionLevel = "M"
+        filter.correctionLevel = "L"
 
         guard let output = filter.outputImage else { return nil }
 
