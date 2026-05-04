@@ -2,12 +2,6 @@ import Foundation
 
 #if canImport(UIKit)
 import UIKit
-import CoreImage
-import CoreImage.CIFilterBuiltins
-#endif
-
-#if canImport(AppKit)
-import AppKit
 #endif
 
 // MARK: - FunikiExporter
@@ -70,36 +64,6 @@ public enum FunikiExporter {
             .replacingOccurrences(of: "=", with: "")
         return URL(string: "\(base)?pack=\(b64)")
     }
-
-    // MARK: - QR Code
-
-#if canImport(CoreImage)
-    /// Generate a QR code image from the pack's share URL.
-    /// Returns nil if the pack is too large to encode in a QR code.
-    public static func qrImage(_ pack: FunikiPack, size: CGFloat = 300) -> PlatformImage? {
-        guard let url = shareURL(pack) else { return nil }
-        let string = url.absoluteString
-        guard let inputData = string.data(using: .utf8) else { return nil }
-
-        let filter = CIFilter.qrCodeGenerator()
-        filter.message = inputData
-        filter.correctionLevel = "L"
-
-        guard let output = filter.outputImage else { return nil }
-
-        let scale = size / output.extent.width
-        let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
-
-#if canImport(UIKit)
-        return UIImage(cgImage: cgImage)
-#elseif canImport(AppKit)
-        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
-#endif
-    }
-#endif
 
     // MARK: - System Share Sheet (iOS / iPadOS)
 
@@ -174,22 +138,12 @@ public enum FunikiExporter {
 
 public enum FunikiExportError: Error, LocalizedError {
     case encodingFailed
-    case packTooLargeForQR
     case validationFailed([String])
 
     public var errorDescription: String? {
         switch self {
         case .encodingFailed: return "Failed to encode pack as JSON"
-        case .packTooLargeForQR: return "Pack is too large to encode as a QR code"
         case .validationFailed(let errors): return "Validation failed: \(errors.joined(separator: ", "))"
         }
     }
 }
-
-// MARK: - Cross-platform image type alias
-
-#if canImport(UIKit)
-public typealias PlatformImage = UIImage
-#elseif canImport(AppKit)
-public typealias PlatformImage = NSImage
-#endif

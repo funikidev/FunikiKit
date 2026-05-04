@@ -178,10 +178,7 @@ let url = try FunikiExporter.temporaryFileURL(pack)
 let json = try FunikiExporter.jsonString(pack)
 
 // Share URL (opens in browser, no app needed)
-let url = FunikiExporter.shareURL(pack)  // → https://funikidev.github.io/generator.html?pack=...
-
-// QR code image
-let image = FunikiExporter.qrImage(pack, size: 300)
+let url = FunikiExporter.shareURL(pack)  // → https://funikidev.github.io/pack.html?pack=...
 
 // System share sheet (UIKit)
 await FunikiExporter.presentShareSheet(for: pack, from: button)
