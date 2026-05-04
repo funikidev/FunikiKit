@@ -7,14 +7,18 @@ public struct FunikiPack: Codable, Sendable, Hashable {
 
     public let funiki: String
     public let name: String
+    public let schema: String?
     /// Natural-language instruction for LLMs: "adopt this persona, don't just describe the file."
     public let activation: String?
     public let persona: PersonaValue
     public let relationship: RelationshipValue?
+    /// Protected memories — MUST NOT be removed from the pack.
+    public let core: [String]?
     public let memory: MemoryValue?
     public let rules: Rules?
     public let turns: Int?
     public let fadeout: Bool?
+    public let lang: String?
     public let origin: String?
     public let creator: String?
 
@@ -24,26 +28,32 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     // Internal init used only by FunikiBuilder
     init(
         name: String,
+        schema: String? = nil,
         activation: String? = nil,
         persona: PersonaValue,
         relationship: RelationshipValue? = nil,
+        core: [String]? = nil,
         memory: MemoryValue? = nil,
         rules: Rules? = nil,
         turns: Int? = nil,
         fadeout: Bool? = nil,
+        lang: String? = nil,
         origin: String? = nil,
         creator: String? = nil,
         extensions: [String: ExtensionValue]? = nil
     ) {
         self.funiki = "1.0"
         self.name = name
+        self.schema = schema
         self.activation = activation
         self.persona = persona
         self.relationship = relationship
+        self.core = core
         self.memory = memory
         self.rules = rules
         self.turns = turns
         self.fadeout = fadeout
+        self.lang = lang
         self.origin = origin
         self.creator = creator
         self.extensions = extensions
@@ -52,20 +62,25 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {
-        case funiki, name, activation, persona, relationship, memory, rules, turns, fadeout, origin, creator
+        case funiki, name
+        case schema = "$schema"
+        case activation, persona, relationship, core, memory, rules, turns, fadeout, lang, origin, creator
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         funiki       = try c.decode(String.self,           forKey: .funiki)
         name         = try c.decode(String.self,           forKey: .name)
+        schema       = try c.decodeIfPresent(String.self,  forKey: .schema)
         activation   = try c.decodeIfPresent(String.self,  forKey: .activation)
         persona      = try c.decode(PersonaValue.self,     forKey: .persona)
         relationship = try c.decodeIfPresent(RelationshipValue.self, forKey: .relationship)
+        core         = try c.decodeIfPresent([String].self,          forKey: .core)
         memory       = try c.decodeIfPresent(MemoryValue.self,       forKey: .memory)
         rules        = try c.decodeIfPresent(Rules.self,             forKey: .rules)
         turns        = try c.decodeIfPresent(Int.self,               forKey: .turns)
         fadeout      = try c.decodeIfPresent(Bool.self,              forKey: .fadeout)
+        lang         = try c.decodeIfPresent(String.self,            forKey: .lang)
         origin       = try c.decodeIfPresent(String.self,            forKey: .origin)
         creator      = try c.decodeIfPresent(String.self,            forKey: .creator)
 
@@ -83,13 +98,16 @@ public struct FunikiPack: Codable, Sendable, Hashable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(funiki,                forKey: .funiki)
         try c.encode(name,                  forKey: .name)
+        try c.encodeIfPresent(schema,       forKey: .schema)
         try c.encodeIfPresent(activation,   forKey: .activation)
         try c.encode(persona,               forKey: .persona)
         try c.encodeIfPresent(relationship, forKey: .relationship)
+        try c.encodeIfPresent(core,         forKey: .core)
         try c.encodeIfPresent(memory,       forKey: .memory)
         try c.encodeIfPresent(rules,        forKey: .rules)
         try c.encodeIfPresent(turns,        forKey: .turns)
         try c.encodeIfPresent(fadeout,      forKey: .fadeout)
+        try c.encodeIfPresent(lang,         forKey: .lang)
         try c.encodeIfPresent(origin,       forKey: .origin)
         try c.encodeIfPresent(creator,      forKey: .creator)
         if let exts = extensions, !exts.isEmpty {

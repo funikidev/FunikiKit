@@ -16,6 +16,7 @@ import Foundation
 public struct FunikiBuilder: Sendable {
 
     private let _name: String
+    private var _schema: String?
     private var _activation: String?
     private var _tone: String?
     private var _style: String?
@@ -28,18 +29,27 @@ public struct FunikiBuilder: Sendable {
     private var _relStatus: String?
     private var _relAffinity: String?
     private var _useObjectRelationship: Bool = false
+    private var _core: [String] = []
     private var _recentMemory: [String] = []
     private var _longtermMemory: [String] = []
     private var _doRules: [String] = []
     private var _avoidRules: [String] = []
     private var _turns: Int? = 3      // default: 3 turns
     private var _fadeout: Bool? = true // default: fade out after turns expire
+    private var _lang: String?
     private var _origin: String?
     private var _creator: String?
     private var _extensions: [String: ExtensionValue] = [:]
 
     public init(name: String) {
         _name = name
+    }
+
+    // MARK: - Schema
+
+    /// Set the $schema URL for tool identification.
+    public func schema(_ url: String) -> FunikiBuilder {
+        var b = self; b._schema = url; return b
     }
 
     // MARK: - Activation
@@ -167,6 +177,19 @@ public struct FunikiBuilder: Sendable {
         return b
     }
 
+    // MARK: - Core (protected memories)
+
+    /// Set protected memories that must not be removed from the pack.
+    /// Maps to the top-level `core` field.
+    public func core(_ items: [String]) -> FunikiBuilder {
+        var b = self; b._core = items; return b
+    }
+
+    /// Append a single protected memory.
+    public func addCore(_ item: String) -> FunikiBuilder {
+        var b = self; b._core.append(item); return b
+    }
+
     // MARK: - Memory
 
     /// Set recent memories (what just happened).
@@ -224,6 +247,13 @@ public struct FunikiBuilder: Sendable {
         return b
     }
 
+    // MARK: - Language
+
+    /// Set the primary language hint (BCP-47, e.g. "ja", "en", "ko").
+    public func lang(_ code: String) -> FunikiBuilder {
+        var b = self; b._lang = code; return b
+    }
+
     // MARK: - Metadata
 
     /// Tag the source app. Helps with provenance when packs are shared.
@@ -267,13 +297,16 @@ public struct FunikiBuilder: Sendable {
     public func build() -> FunikiPack {
         FunikiPack(
             name: _name,
+            schema: _schema,
             activation: _activation ?? Self.defaultActivation(name: _name, turns: _turns),
             persona: buildPersona(),
             relationship: buildRelationship(),
+            core: _core.isEmpty ? nil : _core,
             memory: buildMemory(),
             rules: buildRules(),
             turns: _turns,
             fadeout: _fadeout,
+            lang: _lang,
             origin: _origin,
             creator: _creator,
             extensions: _extensions.isEmpty ? nil : _extensions

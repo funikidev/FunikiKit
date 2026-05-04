@@ -43,7 +43,7 @@ public enum FunikiExporter {
     /// The file is valid for the current process lifetime — use immediately for sharing.
     public static func temporaryFileURL(_ pack: FunikiPack) throws -> URL {
         let data = try jsonData(pack)
-        let filename = sanitizeFilename(pack.name) + ".funiki"
+        let filename = sanitizeFilename(pack.name) + ".funiki.json"
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("funiki", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
