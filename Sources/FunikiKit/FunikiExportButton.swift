@@ -1,4 +1,9 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 // MARK: - FunikiShareLink
 //
@@ -136,6 +141,7 @@ public struct FunikiShareSheet: View {
 
     let pack: FunikiPack
     @Environment(\.dismiss) private var dismiss
+    @State private var didCopyURL = false
 
     public var body: some View {
         NavigationStack {
@@ -168,9 +174,20 @@ public struct FunikiShareSheet: View {
                         }
                     }
 
-                    if let url = FunikiExporter.shareURL(pack) {
-                        ShareLink(item: url) {
-                            Label("Share Link", systemImage: "link")
+                    if let shareURL = FunikiExporter.shareURL(pack) {
+                        Button {
+                            #if canImport(UIKit)
+                            UIPasteboard.general.string = shareURL.absoluteString
+                            #elseif canImport(AppKit)
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(shareURL.absoluteString, forType: .string)
+                            #endif
+                            withAnimation { didCopyURL = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation { didCopyURL = false }
+                            }
+                        } label: {
+                            Label(didCopyURL ? "Copied!" : "Copy URL", systemImage: didCopyURL ? "checkmark" : "link")
                         }
                     }
                 }
@@ -178,6 +195,7 @@ public struct FunikiShareSheet: View {
             }
             .navigationTitle("Export Pack")
             .navigationBarTitleDisplayMode(.inline)
+            .presentationDetents([.medium])
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
