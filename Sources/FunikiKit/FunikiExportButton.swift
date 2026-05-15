@@ -205,7 +205,8 @@ public struct FunikiShareSheet: View {
     }
 
     private var personaSummary: String {
-        switch pack.persona {
+        guard let persona = pack.persona else { return "(masked)" }
+        switch persona {
         case .string(let s): return String(s.prefix(120))
         case .object(let o):
             return [o.tone, o.style].compactMap { $0 }.joined(separator: " · ")
