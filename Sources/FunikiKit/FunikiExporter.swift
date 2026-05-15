@@ -109,8 +109,17 @@ public enum FunikiExporter {
         if pack.name.trimmingCharacters(in: .whitespaces).isEmpty {
             errors.append("name is empty")
         }
-        if case .string(let s) = pack.persona, s.trimmingCharacters(in: .whitespaces).isEmpty {
-            errors.append("persona is empty")
+        if pack.privacy == "mask" {
+            if pack.payload == nil || pack.payload?.isEmpty == true {
+                errors.append("payload is empty (required when privacy=mask)")
+            }
+        } else {
+            if pack.persona == nil {
+                errors.append("persona is missing")
+            } else if case .some(.string(let s)) = pack.persona,
+                      s.trimmingCharacters(in: .whitespaces).isEmpty {
+                errors.append("persona is empty")
+            }
         }
         if let turns = pack.turns, turns < 0 {
             errors.append("turns must be >= 0")

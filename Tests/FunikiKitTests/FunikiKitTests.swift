@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import FunikiKit
 
@@ -12,13 +13,14 @@ struct BuilderTests {
             .persona("冷静で皮肉屋。短文。")
             .build()
 
-        #expect(pack.funiki == "1.0")
+        #expect(pack.funiki == "1.1")
         #expect(pack.name == "Leo")
-        if case .string(let s) = pack.persona { #expect(!s.isEmpty) }
+        if case .string(let s)? = pack.persona { #expect(!s.isEmpty) }
         else { Issue.record("Expected string persona") }
         #expect(pack.memory == nil)
         #expect(pack.relationship == nil)
         #expect(pack.rules == nil)
+        #expect(pack.privacy == nil)
     }
 
     @Test("Structured persona fields")
@@ -27,7 +29,7 @@ struct BuilderTests {
             .persona(tone: "Dry and precise", style: "No small talk", values: ["honesty"], quirks: ["corrects immediately"])
             .build()
 
-        if case .object(let o) = pack.persona {
+        if case .object(let o)? = pack.persona {
             #expect(o.tone == "Dry and precise")
             #expect(o.values?.contains("honesty") == true)
             #expect(o.quirks?.count == 1)
@@ -44,7 +46,7 @@ struct BuilderTests {
             .trait("mentions the moon")
             .build()
 
-        if case .object(let o) = pack.persona {
+        if case .object(let o)? = pack.persona {
             #expect(o.tone == "Quiet and poetic")
             #expect(o.quirks?.first == "mentions the moon")
         } else {
@@ -59,7 +61,7 @@ struct BuilderTests {
             .memory(["event1", "event2"])
             .build()
 
-        if case .array(let arr) = pack.memory {
+        if case .array(let arr)? = pack.memory {
             #expect(arr == ["event1", "event2"])
         } else {
             Issue.record("Expected flat array memory")
@@ -74,7 +76,7 @@ struct BuilderTests {
             .longterm(["old1", "old2"])
             .build()
 
-        if case .object(let o) = pack.memory {
+        if case .object(let o)? = pack.memory {
             #expect(o.recent?.first == "recent1")
             #expect(o.longterm?.count == 2)
         } else {
@@ -90,7 +92,7 @@ struct BuilderTests {
             .addMemory("second")
             .build()
 
-        if case .array(let arr) = pack.memory {
+        if case .array(let arr)? = pack.memory {
             #expect(arr.count == 2)
             #expect(arr[1] == "second")
         } else {
@@ -105,7 +107,7 @@ struct BuilderTests {
             .relationship("Long-time ally")
             .build()
 
-        if case .string(let s) = pack.relationship { #expect(s == "Long-time ally") }
+        if case .string(let s)? = pack.relationship { #expect(s == "Long-time ally") }
         else { Issue.record("Expected string relationship") }
     }
 
@@ -116,7 +118,7 @@ struct BuilderTests {
             .relationship(userName: "you", status: "partner", affinity: "deep")
             .build()
 
-        if case .object(let o) = pack.relationship {
+        if case .object(let o)? = pack.relationship {
             #expect(o.status == "partner")
             #expect(o.affinity == "deep")
         } else {
@@ -212,13 +214,13 @@ struct ExporterTests {
     func jsonStringContainsVersion() throws {
         let json = try FunikiExporter.jsonString(simplePack())
         #expect(json.contains("\"funiki\""))
-        #expect(json.contains("1.0"))
+        #expect(json.contains("1.1"))
     }
 
-    @Test("temporaryFileURL writes .funiki file")
+    @Test("temporaryFileURL writes .funiki.json file")
     func tempFileExists() throws {
         let url = try FunikiExporter.temporaryFileURL(simplePack())
-        #expect(url.pathExtension == "funiki")
+        #expect(url.lastPathComponent.hasSuffix(".funiki.json"))
         #expect(FileManager.default.fileExists(atPath: url.path))
     }
 
@@ -261,11 +263,141 @@ struct ExporterTests {
         #expect(decoded.origin == "TestApp")
         #expect(decoded.extensions?["x_score"] == .int(99))
 
-        if case .object(let o) = decoded.persona {
+        if case .object(let o)? = decoded.persona {
             #expect(o.tone == "Dry")
         } else {
             Issue.record("Expected object persona after round-trip")
         }
+    }
+}
+
+// MARK: - Mask tests
+
+@Suite("FunikiMask")
+struct MaskTests {
+
+    private func openPack() -> FunikiPack {
+        FunikiBuilder(name: "Leo")
+            .persona(tone: "Dry", style: "Minimal", values: ["honesty"], quirks: ["mentions rain"])
+            .relationship(userName: "you", status: "partner", affinity: "deep")
+            .core(["met on a rainy day"])
+            .memory(["had an argument yesterday"])
+            .alwaysDo(["use first name"])
+            .neverDo(["break character"])
+            .turns(8)
+            .lang("ja")
+            .origin("test")
+            .extend("affection", 87)
+            .build()
+    }
+
+    @Test("mask wraps sensitive fields into payload")
+    func maskWrapsFields() throws {
+        let masked = try FunikiMask.mask(openPack())
+        #expect(masked.privacy == "mask")
+        #expect(masked.payload != nil)
+        #expect(masked.payload?.isEmpty == false)
+        #expect(masked.persona == nil)
+        #expect(masked.relationship == nil)
+        #expect(masked.core == nil)
+        #expect(masked.memory == nil)
+        #expect(masked.rules == nil)
+        #expect(masked.extensions == nil)
+        // Session metadata and identity stay open
+        #expect(masked.name == "Leo")
+        #expect(masked.turns == 8)
+        #expect(masked.lang == "ja")
+        #expect(masked.origin == "test")
+    }
+
+    @Test("mask injects decode prelude into activation")
+    func maskInjectsPrelude() throws {
+        let masked = try FunikiMask.mask(openPack())
+        let act = masked.activation ?? ""
+        #expect(act.contains("payload"))
+        #expect(act.contains("base64"))
+    }
+
+    @Test("unmask restores all fields")
+    func unmaskRestores() throws {
+        let original = openPack()
+        let masked = try FunikiMask.mask(original)
+        let restored = try FunikiMask.unmask(masked)
+
+        #expect(restored.privacy == nil)
+        #expect(restored.payload == nil)
+        #expect(restored.name == "Leo")
+        #expect(restored.turns == 8)
+        #expect(restored.lang == "ja")
+        #expect(restored.core?.first == "met on a rainy day")
+        #expect(restored.extensions?["x_affection"] == .int(87))
+        if case .object(let o)? = restored.persona {
+            #expect(o.tone == "Dry")
+            #expect(o.quirks?.first == "mentions rain")
+        } else {
+            Issue.record("Expected object persona after unmask")
+        }
+        if case .object(let r)? = restored.relationship {
+            #expect(r.status == "partner")
+        } else {
+            Issue.record("Expected object relationship after unmask")
+        }
+    }
+
+    @Test("Restored activation does not contain mask prelude")
+    func restoredActivationIsClean() throws {
+        let masked = try FunikiMask.mask(openPack())
+        let restored = try FunikiMask.unmask(masked)
+        let act = restored.activation ?? ""
+        #expect(!act.contains("decode it from base64"))
+    }
+
+    @Test("Idempotent: mask(mask(x)) == mask(x)")
+    func maskIdempotent() throws {
+        let once = try FunikiMask.mask(openPack())
+        let twice = try FunikiMask.mask(once)
+        #expect(twice.payload == once.payload)
+        #expect(twice.privacy == "mask")
+    }
+
+    @Test("Idempotent: unmask(open) returns open as-is")
+    func unmaskOnOpen() throws {
+        let open = openPack()
+        let result = try FunikiMask.unmask(open)
+        #expect(result.privacy == nil)
+        #expect(result.name == open.name)
+    }
+
+    @Test("load() auto-unmasks mask packs")
+    func loadAutoUnmask() throws {
+        let masked = try FunikiMask.mask(openPack())
+        let data = try FunikiExporter.jsonData(masked)
+        let loaded = try FunikiMask.load(data)
+        #expect(loaded.privacy == nil)
+        if case .object(let o)? = loaded.persona {
+            #expect(o.tone == "Dry")
+        } else {
+            Issue.record("Expected unmasked persona from load")
+        }
+    }
+
+    @Test("Mask file validates as v1.1 mask shape")
+    func maskValidates() throws {
+        let masked = try FunikiMask.mask(openPack())
+        let errors = FunikiExporter.validate(masked)
+        #expect(errors.isEmpty)
+    }
+
+    @Test("Mask pack with empty payload fails validation")
+    func emptyPayloadFailsValidation() {
+        let bad = FunikiPack(
+            funiki: "1.1",
+            name: "Leo",
+            privacy: "mask",
+            payload: ""
+        )
+        let errors = FunikiExporter.validate(bad)
+        #expect(errors.contains(where: { $0.contains("payload") }))
     }
 }
 

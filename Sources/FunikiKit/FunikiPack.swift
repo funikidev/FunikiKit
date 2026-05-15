@@ -3,14 +3,22 @@ import Foundation
 // MARK: - FunikiPack
 
 /// The output format. Developers don't construct this directly — use FunikiBuilder.
+///
+/// A FunikiPack can be in one of two privacy modes:
+/// - `open` (default): persona/relationship/core/memory/rules are visible at the top level
+/// - `mask`: those fields live inside `payload` (base64-encoded JSON). See spec §17.
 public struct FunikiPack: Codable, Sendable, Hashable {
 
     public let funiki: String
     public let name: String
     public let schema: String?
+    /// Privacy mode. `nil` is treated as `open`.
+    public let privacy: String?
+    /// Base64-encoded payload, present when `privacy == "mask"`.
+    public let payload: String?
     /// Natural-language instruction for LLMs: "adopt this persona, don't just describe the file."
     public let activation: String?
-    public let persona: PersonaValue
+    public let persona: PersonaValue?
     public let relationship: RelationshipValue?
     /// Protected memories — MUST NOT be removed from the pack.
     public let core: [String]?
@@ -25,12 +33,15 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     // x_ vendor extensions captured as raw JSON-compatible values
     public let extensions: [String: ExtensionValue]?
 
-    // Internal init used only by FunikiBuilder
+    // Internal init used by FunikiBuilder and FunikiMask
     init(
+        funiki: String = "1.1",
         name: String,
         schema: String? = nil,
+        privacy: String? = nil,
+        payload: String? = nil,
         activation: String? = nil,
-        persona: PersonaValue,
+        persona: PersonaValue? = nil,
         relationship: RelationshipValue? = nil,
         core: [String]? = nil,
         memory: MemoryValue? = nil,
@@ -42,9 +53,11 @@ public struct FunikiPack: Codable, Sendable, Hashable {
         creator: String? = nil,
         extensions: [String: ExtensionValue]? = nil
     ) {
-        self.funiki = "1.0"
+        self.funiki = funiki
         self.name = name
         self.schema = schema
+        self.privacy = privacy
+        self.payload = payload
         self.activation = activation
         self.persona = persona
         self.relationship = relationship
@@ -64,6 +77,7 @@ public struct FunikiPack: Codable, Sendable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case funiki, name
         case schema = "$schema"
+        case privacy, payload
         case activation, persona, relationship, core, memory, rules, turns, fadeout, lang, origin, creator
     }
 
@@ -72,8 +86,10 @@ public struct FunikiPack: Codable, Sendable, Hashable {
         funiki       = try c.decode(String.self,           forKey: .funiki)
         name         = try c.decode(String.self,           forKey: .name)
         schema       = try c.decodeIfPresent(String.self,  forKey: .schema)
+        privacy      = try c.decodeIfPresent(String.self,  forKey: .privacy)
+        payload      = try c.decodeIfPresent(String.self,  forKey: .payload)
         activation   = try c.decodeIfPresent(String.self,  forKey: .activation)
-        persona      = try c.decode(PersonaValue.self,     forKey: .persona)
+        persona      = try c.decodeIfPresent(PersonaValue.self,      forKey: .persona)
         relationship = try c.decodeIfPresent(RelationshipValue.self, forKey: .relationship)
         core         = try c.decodeIfPresent([String].self,          forKey: .core)
         memory       = try c.decodeIfPresent(MemoryValue.self,       forKey: .memory)
@@ -99,8 +115,10 @@ public struct FunikiPack: Codable, Sendable, Hashable {
         try c.encode(funiki,                forKey: .funiki)
         try c.encode(name,                  forKey: .name)
         try c.encodeIfPresent(schema,       forKey: .schema)
+        try c.encodeIfPresent(privacy,      forKey: .privacy)
         try c.encodeIfPresent(activation,   forKey: .activation)
-        try c.encode(persona,               forKey: .persona)
+        try c.encodeIfPresent(payload,      forKey: .payload)
+        try c.encodeIfPresent(persona,      forKey: .persona)
         try c.encodeIfPresent(relationship, forKey: .relationship)
         try c.encodeIfPresent(core,         forKey: .core)
         try c.encodeIfPresent(memory,       forKey: .memory)
